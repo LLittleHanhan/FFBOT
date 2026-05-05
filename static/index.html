@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FFBot 控制台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .result-box { max-height: 400px; overflow-y: auto; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <div class="max-w-4xl mx-auto p-6">
+        <h1 class="text-2xl font-bold mb-6">🤖 FFBot 控制台</h1>
+
+        <!-- 状态栏 -->
+        <div id="status-bar" class="bg-gray-800 rounded-lg p-4 mb-6 flex gap-6 items-center">
+            <span>状态加载中...</span>
+        </div>
+
+        <!-- 配置: Platform -->
+        <section class="bg-gray-800 rounded-lg p-5 mb-4">
+            <h2 class="text-lg font-semibold mb-3">📡 Platform (NapCat)</h2>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                    <label class="text-sm text-gray-400">WebSocket URL</label>
+                    <input id="cfg-ws-url" type="text" class="w-full bg-gray-700 rounded px-3 py-2 mt-1">
+                </div>
+                <div>
+                    <label class="text-sm text-gray-400">Access Token</label>
+                    <input id="cfg-access-token" type="text" class="w-full bg-gray-700 rounded px-3 py-2 mt-1">
+                </div>
+            </div>
+            <button onclick="testPlatform()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm">🔌 测试连通性</button>
+            <span id="platform-result" class="ml-3 text-sm"></span>
+        </section>
+
+        <!-- 配置: Provider -->
+        <section class="bg-gray-800 rounded-lg p-5 mb-4">
+            <h2 class="text-lg font-semibold mb-3">🧠 Provider (LLM)</h2>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                    <label class="text-sm text-gray-400">API Base</label>
+                    <input id="cfg-api-base" type="text" class="w-full bg-gray-700 rounded px-3 py-2 mt-1">
+                </div>
+                <div>
+                    <label class="text-sm text-gray-400">API Key</label>
+                    <input id="cfg-api-key" type="password" class="w-full bg-gray-700 rounded px-3 py-2 mt-1">
+                </div>
+                <div>
+                    <label class="text-sm text-gray-400">Model</label>
+                    <input id="cfg-model" type="text" class="w-full bg-gray-700 rounded px-3 py-2 mt-1">
+                </div>
+                <div>
+                    <label class="text-sm text-gray-400">Temperature</label>
+                    <input id="cfg-temperature" type="number" step="0.1" class="w-full bg-gray-700 rounded px-3 py-2 mt-1">
+                </div>
+            </div>
+            <button onclick="testProvider()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm">🧪 测试连通性</button>
+            <span id="provider-result" class="ml-3 text-sm"></span>
+        </section>
+
+        <!-- 配置: System Prompt -->
+        <section class="bg-gray-800 rounded-lg p-5 mb-4">
+            <h2 class="text-lg font-semibold mb-3">💬 System Prompt</h2>
+            <textarea id="cfg-system-prompt" rows="3" class="w-full bg-gray-700 rounded px-3 py-2"></textarea>
+        </section>
+
+        <!-- 保存配置 -->
+        <div class="mb-6">
+            <button onclick="saveConfig()" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded text-sm font-semibold">💾 保存所有配置</button>
+            <span id="save-result" class="ml-3 text-sm"></span>
+        </div>
+
+        <!-- 用户管理 -->
+        <section class="bg-gray-800 rounded-lg p-5 mb-4">
+            <h2 class="text-lg font-semibold mb-3">👥 用户管理</h2>
+            <p class="text-xs text-gray-400 mb-3">白名单选中 = 允许 bot 回复该用户</p>
+            <button onclick="loadUsers()" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded text-sm mb-3">刷新</button>
+            <div id="users-list" class="space-y-2"></div>
+        </section>
+
+        <!-- 对话记录 -->
+        <section class="bg-gray-800 rounded-lg p-5 mb-4">
+            <h2 class="text-lg font-semibold mb-3">🗄️ 对话记录</h2>
+            <div class="grid grid-cols-3 gap-3 mb-3">
+                <div>
+                    <label class="text-sm text-gray-400">用户 ID</label>
+                    <input id="db-user-id" type="text" class="w-full bg-gray-700 rounded px-3 py-2 mt-1" placeholder="QQ号">
+                </div>
+                <div>
+                    <label class="text-sm text-gray-400">开始时间</label>
+                    <input id="db-start-time" type="datetime-local" class="w-full bg-gray-700 rounded px-3 py-2 mt-1">
+                </div>
+                <div>
+                    <label class="text-sm text-gray-400">结束时间</label>
+                    <input id="db-end-time" type="datetime-local" class="w-full bg-gray-700 rounded px-3 py-2 mt-1">
+                </div>
+            </div>
+            <div class="flex gap-3 mb-3 items-end">
+                <div>
+                    <label class="text-sm text-gray-400">最大条数</label>
+                    <input id="db-limit" type="number" value="20" class="w-24 bg-gray-700 rounded px-3 py-2 mt-1">
+                </div>
+                <button onclick="queryMessages()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded text-sm h-10">🔍 查询</button>
+                <button onclick="deleteSelected()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm h-10">🗑️ 删除选中</button>
+                <label class="flex items-center gap-1 text-sm text-gray-400 cursor-pointer h-10">
+                    <input type="checkbox" id="select-all" onchange="toggleSelectAll(this.checked)"> 全选
+                </label>
+            </div>
+            <div id="db-result" class="result-box bg-gray-900 rounded p-3 text-sm text-gray-300 space-y-1">
+                输入用户ID后点击查询...
+            </div>
+        </section>
+
+        <!-- NapCat API -->
+        <section class="bg-gray-800 rounded-lg p-5 mb-4">
+            <h2 class="text-lg font-semibold mb-3">🔧 NapCat API</h2>
+            <div class="flex gap-2 mb-3">
+                <button onclick="debugCall('get_login_info')" class="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded text-sm">登录信息</button>
+                <button onclick="debugCall('get_friend_list')" class="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded text-sm">好友列表</button>
+            </div>
+            <div id="debug-result" class="result-box bg-gray-900 rounded p-3 text-sm font-mono whitespace-pre-wrap text-gray-300">
+                ...
+            </div>
+        </section>
+    </div>
+
+<script>
+const API = '';
+let botName = 'bot';
+
+window.onload = () => { loadConfig(); refreshStatus(); loadUsers(); setInterval(refreshStatus, 5000); };
+
+async function refreshStatus() {
+    try {
+        const res = await fetch(`${API}/api/status`);
+        const data = await res.json();
+        if (data.bot_name) botName = data.bot_name;
+        const dot = data.ws_connected ? '🟢' : '🔴';
+        document.getElementById('status-bar').innerHTML = `
+            <span>${dot} NapCat: ${data.ws_connected ? '已连接' : '未连接'}</span>
+            <span class="text-gray-400">|</span>
+            <span>模型: ${data.model}</span>
+        `;
+    } catch(e) {}
+}
+
+async function loadConfig() {
+    try {
+        const cfg = await (await fetch(`${API}/api/config`)).json();
+        const p = cfg.platform?.onebot || {};
+        const pr = cfg.provider?.openai || {};
+        document.getElementById('cfg-ws-url').value = p.ws_url || '';
+        document.getElementById('cfg-access-token').value = p.access_token || '';
+        document.getElementById('cfg-api-base').value = pr.api_base || '';
+        document.getElementById('cfg-api-key').value = pr.api_key || '';
+        document.getElementById('cfg-model').value = pr.model || '';
+        document.getElementById('cfg-temperature').value = pr.temperature || 0.7;
+        document.getElementById('cfg-system-prompt').value = cfg.conversation?.system_prompt || '';
+    } catch(e) {}
+}
+
+async function testPlatform() {
+    const el = document.getElementById('platform-result');
+    el.textContent = '...'; el.className = 'ml-3 text-sm text-yellow-400';
+    try {
+        const data = await (await fetch(`${API}/api/test/platform`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ ws_url: document.getElementById('cfg-ws-url').value, access_token: document.getElementById('cfg-access-token').value })
+        })).json();
+        el.textContent = data.ok ? '✅ 连接成功' : `❌ ${data.error}`;
+        el.className = `ml-3 text-sm ${data.ok ? 'text-green-400' : 'text-red-400'}`;
+    } catch(e) { el.textContent = `❌ ${e}`; el.className = 'ml-3 text-sm text-red-400'; }
+}
+
+async function testProvider() {
+    const el = document.getElementById('provider-result');
+    el.textContent = '...'; el.className = 'ml-3 text-sm text-yellow-400';
+    try {
+        const data = await (await fetch(`${API}/api/test/provider`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ api_base: document.getElementById('cfg-api-base').value, api_key: document.getElementById('cfg-api-key').value, model: document.getElementById('cfg-model').value, temperature: parseFloat(document.getElementById('cfg-temperature').value) || 0.7, max_tokens: 100, timeout: 30 })
+        })).json();
+        el.textContent = data.ok ? `✅ ${data.message}` : `❌ ${data.error}`;
+        el.className = `ml-3 text-sm ${data.ok ? 'text-green-400' : 'text-red-400'}`;
+    } catch(e) { el.textContent = `❌ ${e}`; el.className = 'ml-3 text-sm text-red-400'; }
+}
+
+async function saveConfig() {
+    const el = document.getElementById('save-result');
+    const config = {
+        storage: { db_path: "data/ffbot.db" },
+        platform: { onebot: { ws_url: document.getElementById('cfg-ws-url').value, access_token: document.getElementById('cfg-access-token').value }},
+        provider: { openai: { api_base: document.getElementById('cfg-api-base').value, api_key: document.getElementById('cfg-api-key').value, model: document.getElementById('cfg-model').value, max_tokens: 2048, temperature: parseFloat(document.getElementById('cfg-temperature').value) || 0.7, timeout: 60 }},
+        conversation: { system_prompt: document.getElementById('cfg-system-prompt').value },
+        logging: { level: "INFO" }, web: { port: 8888 },
+    };
+    try {
+        const data = await (await fetch(`${API}/api/config`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(config) })).json();
+        el.textContent = data.ok ? '✅ 已保存' : `❌ ${data.error}`;
+        el.className = `ml-3 text-sm ${data.ok ? 'text-green-400' : 'text-red-400'}`;
+    } catch(e) { el.textContent = `❌ ${e}`; el.className = 'ml-3 text-sm text-red-400'; }
+}
+
+// ========== 用户管理 ==========
+
+async function addUser() {
+    const userId = document.getElementById('add-user-id').value.trim();
+    const name = document.getElementById('add-user-name').value.trim();
+    if (!userId) { alert('请输入用户 ID'); return; }
+    await fetch(`${API}/api/users/add`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ user_id: userId, nickname: name || userId })
+    });
+    document.getElementById('add-user-id').value = '';
+    document.getElementById('add-user-name').value = '';
+    loadUsers();
+}
+
+async function loadUsers() {
+    const el = document.getElementById('users-list');
+    try {
+        const data = await (await fetch(`${API}/api/users`)).json();
+        if (!data.ok || data.users.length === 0) { el.innerHTML = '<p class="text-gray-500">暂无用户</p>'; return; }
+        el.innerHTML = data.users.map(u => `
+            <div class="flex items-center justify-between bg-gray-900 rounded px-3 py-2">
+                <span>
+                    <span class="text-blue-300">${u.nickname || '未知'}</span>
+                    <span class="text-gray-500 text-xs ml-2">ID: ${u.user_id}</span>
+                </span>
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <span class="text-xs text-gray-400">允许回复</span>
+                    <input type="checkbox" ${u.is_allowed ? 'checked' : ''} onchange="toggleAllow('${u.user_id}', this.checked)"
+                        class="w-4 h-4 rounded">
+                </label>
+            </div>
+        `).join('');
+    } catch(e) { el.innerHTML = `<p class="text-red-400">${e}</p>`; }
+}
+
+async function toggleAllow(userId, allowed) {
+    await fetch(`${API}/api/users/allow`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ user_id: userId, allowed })
+    });
+}
+
+// ========== 对话记录 ==========
+
+let currentMessages = [];
+
+function formatMessageHtml(m, idx) {
+    const time = new Date(m.created_at * 1000).toLocaleString();
+    let text = m.content;
+    let nickname = m.user_id;
+    try {
+        const parsed = JSON.parse(text);
+        nickname = parsed.nickname || m.user_id;
+        if (parsed.message) {
+            text = parsed.message.map(seg => {
+                if (seg.type === 'text') return seg.data.text;
+                if (seg.type === 'image') return '[图片]';
+                if (seg.type === 'face') return `[${seg.data.face_text || '表情'}]`;
+                if (seg.type === 'file') return '[文件]';
+                return `[${seg.type}]`;
+            }).join('');
+        }
+    } catch(e) {}
+    let reply = m.reply ? `<div class="text-gray-400 ml-6">↪ ${botName}: ${m.reply}</div>` : '';
+    return `
+        <div class="flex items-start gap-2 py-1 border-b border-gray-800">
+            <input type="checkbox" class="msg-checkbox mt-1" data-id="${m.message_id}">
+            <div class="flex-1">
+                <div><span class="text-gray-500 text-xs">[${time}]</span> <span class="text-blue-300">${nickname}</span>: ${text}</div>
+                ${reply}
+            </div>
+        </div>`;
+}
+
+async function queryMessages() {
+    const el = document.getElementById('db-result');
+    const userId = document.getElementById('db-user-id').value.trim();
+    if (!userId) { el.innerHTML = '请输入用户 ID'; return; }
+    el.innerHTML = '查询中...';
+    const params = { user_id: userId, limit: parseInt(document.getElementById('db-limit').value) || 20 };
+    const st = document.getElementById('db-start-time').value;
+    const et = document.getElementById('db-end-time').value;
+    if (st) params.start_time = st.replace('T', ' ') + ':00';
+    if (et) params.end_time = et.replace('T', ' ') + ':00';
+    try {
+        const data = await (await fetch(`${API}/api/messages`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(params) })).json();
+        if (!data.ok) { el.innerHTML = `错误: ${data.error}`; return; }
+        currentMessages = data.messages;
+        if (!currentMessages.length) { el.innerHTML = '无结果'; return; }
+        el.innerHTML = currentMessages.map((m, i) => formatMessageHtml(m, i)).join('');
+        document.getElementById('select-all').checked = false;
+    } catch(e) { el.innerHTML = `错误: ${e}`; }
+}
+
+function toggleSelectAll(checked) {
+    document.querySelectorAll('.msg-checkbox').forEach(cb => cb.checked = checked);
+}
+
+async function deleteSelected() {
+    const checkboxes = document.querySelectorAll('.msg-checkbox:checked');
+    if (!checkboxes.length) { alert('请先选中要删除的记录'); return; }
+    const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
+    const userId = document.getElementById('db-user-id').value.trim();
+    if (!confirm(`确认删除选中的 ${ids.length} 条记录？`)) return;
+    try {
+        const data = await (await fetch(`${API}/api/messages/delete`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ user_id: userId, message_ids: ids })
+        })).json();
+        if (data.ok) {
+            queryMessages(); // 刷新
+        } else {
+            alert(`删除失败: ${data.error}`);
+        }
+    } catch(e) { alert(`错误: ${e}`); }
+}
+
+async function debugCall(action, params = {}) {
+    const el = document.getElementById('debug-result');
+    el.textContent = `${action}...`;
+    try {
+        const data = await (await fetch(`${API}/api/debug/call`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ action, params }) })).json();
+        el.textContent = JSON.stringify(data, null, 2);
+    } catch(e) { el.textContent = `${e}`; }
+}
+</script>
+</body>
+</html>

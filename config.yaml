@@ -1,0 +1,20 @@
+conversation:
+  system_prompt: 你是一个智能助手，请用中文回答用户的问题。
+logging:
+  level: INFO
+platform:
+  onebot:
+    access_token: XSVNpVjnQWSUvkC0
+    ws_url: ws://127.0.0.1:3001
+provider:
+  openai:
+    api_base: https://api.deepseek.com
+    api_key: sk-ce011700f9ed446fb75d7fd697159d00
+    max_tokens: 2048
+    model: deepseek-v4-flash
+    temperature: 0.7
+    timeout: 60
+storage:
+  db_path: data/ffbot.db
+web:
+  port: 8888
